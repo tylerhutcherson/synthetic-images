@@ -1,0 +1,7 @@
+*.json
+*.zip
+*.sframe
+*.DS_Store
+Backgrounds/
+Objects/
+TrainingImages/
