@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 from PIL import Image
 
-
+# Entrypoint Args
 parser = argparse.ArgumentParser(description='Create synthetic training data for object detection algorithms.')
 parser.add_argument("-bkg", "--backgrounds", type=str, default="Backgrounds/",
                     help="Path to background images folder.")
@@ -24,8 +24,8 @@ args = parser.parse_args()
 # Prepare data creation pipeline
 base_bkgs_path = args.backgrounds
 bkg_images = [f for f in os.listdir(base_bkgs_path) if not f.startswith(".")]
-objects_path = args.objects
-object_images = [f for f in os.listdir(objects_path) if not f.startswith(".")]
+objs_path = args.objects
+obj_images = [f for f in os.listdir(objs_path) if not f.startswith(".")]
 sizes = [0.4, 0.6, 0.8, 1, 1.2] # different obj sizes to use TODO make configurable
 count_per_size = 4 # number of locations for each obj size TODO make configurable
 annotations = [] # store annots here
@@ -187,10 +187,11 @@ if __name__ == "__main__":
         import turicreate as tc
         # Load images and annotations to sframes
         images = tc.load_images(output_images).sort("path")
-        annots = tc.SArray(annotations).unpack().sort("path")
+        annots = tc.SArray(annotations).unpack(column_name_prefix=None).sort("path")
         # Join
-        images = images.join(annots)
+        images = images.join(annots, how='left', on='path')
         # Save out sframe
         images[['image', 'path', 'annotations']].save("training_data.sframe")
 
-    print("Done!", flush=True)
+    total_images = len([f for f in os.listdir(output_images) if not f.startswith(".")])
+    print("Done! Created {} synthetic training images.".format(total_images), flush=True)

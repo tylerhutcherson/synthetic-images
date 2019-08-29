@@ -1,4 +1,4 @@
-name: synthetic-image-creator
+name: images
 channels:
     - defaults
 dependencies:
@@ -7,3 +7,4 @@ dependencies:
     - pip:
         - turicreate==5.7.1
         - Pillow
+        - numpy
