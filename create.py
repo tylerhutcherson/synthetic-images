@@ -2,7 +2,9 @@ import os
 import json
 import argparse
 import numpy as np
-from PIL import Image
+import random
+import math
+from PIL import Image, ImageEnhance
 
 # Entrypoint Args
 parser = argparse.ArgumentParser(description='Create synthetic training data for object detection algorithms.')
@@ -12,12 +14,14 @@ parser.add_argument("-obj", "--objects", type=str, default="Objects/",
                     help="Path to object images folder.")
 parser.add_argument("-o", "--output", type=str, default="TrainingImages/",
                     help="Path to output images folder.")
-parser.add_argument("-ann", "--annotate", type=bool, default=True,
+parser.add_argument("-ann", "--annotate", type=bool, default=False,
                     help="Include annotations in the data augmentation steps?")
-parser.add_argument("-s", "--sframe", type=bool, default=True,
+parser.add_argument("-s", "--sframe", type=bool, default=False,
                     help="Convert dataset to an sframe?")
-parser.add_argument("-g", "--groups", type=bool, default=True,
+parser.add_argument("-g", "--groups", type=bool, default=False,
                     help="Include groups of objects in training set?")
+parser.add_argument("-mut", "--mutate", type=bool, default=False,
+                    help="Perform mutatuons to objects (rotation, brightness, shapness, contrast)")
 args = parser.parse_args()
 
 
@@ -85,7 +89,28 @@ def get_group_obj_positions(obj_group, bkg):
         # append our new box
         boxes.append(new_box)
     return obj_sizes, boxes
+    
+def mutate_image(img):
+    # resize image for random value
+    resize_rate = random.choice(sizes)
+    img = img.resize([int(img.width*resize_rate), int(img.height*resize_rate)], Image.BILINEAR)
 
+    # rotate image for random andle and generate exclusion mask 
+    rotate_angle = random.randint(0,360)
+    mask = Image.new('L', img.size, 255)
+    img = img.rotate(rotate_angle, expand=True)
+    mask = mask.rotate(rotate_angle, expand=True)
+
+
+    # perform some enhancements on image
+    enhancers = [ImageEnhance.Brightness, ImageEnhance.Color, ImageEnhance.Contrast, ImageEnhance.Sharpness]
+    enhancers_count = random.randint(0,3)
+    for i in range(0,enhancers_count):
+        enhancer = random.choice(enhancers)
+        enhancers.remove(enhancer)
+        img = enhancer(img).enhance(random.uniform(0.5,1.5))
+
+    return img, mask
 
 
 if __name__ == "__main__":
@@ -103,18 +128,26 @@ if __name__ == "__main__":
             # Load the single obj
             i_path = objs_path + i
             obj_img = Image.open(i_path)
+            
 
             # Get an array of random obj positions (from top-left corner)
-            obj_h, obj_w, x_pos, y_pos = get_obj_positions(obj=obj_img, bkg=bkg_img, count=count_per_size)
+            obj_h, obj_w, x_pos, y_pos = get_obj_positions(obj=obj_img, bkg=bkg_img, count=count_per_size)            
+            
 
             # Create synthetic images based on positions
             for h, w, x, y in zip(obj_h, obj_w, x_pos, y_pos):
                 # Copy background
                 bkg_w_obj = bkg_img.copy()
-                # Adjust obj size
-                new_obj = obj_img.resize(size=(w, h))
-                # Paste on the obj
-                bkg_w_obj.paste(new_obj, (x, y))
+                
+                if args.mutate:
+                    new_obj, mask = mutate_image(obj_img)
+                    # Paste on the obj
+                    bkg_w_obj.paste(new_obj, (x, y), mask)
+                else:
+                    # Adjust obj size
+                    new_obj = obj_img.resize(size=(w, h))
+                    # Paste on the obj
+                    bkg_w_obj.paste(new_obj, (x, y))
                 output_fp = output_images + str(n) + ".png"
                 # Save the image
                 bkg_w_obj.save(fp=output_fp, format="png")

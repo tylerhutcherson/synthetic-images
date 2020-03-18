@@ -34,3 +34,4 @@ These are the available entrypoint arguments that you can supply at runtime. Mor
 - `--groups`     : Whether or not to place groups of objects together.
 - `--annotate`   : Whether or not to create and save annotations for the new images.
 - `--sframe`     : Whether or not to create a Turi Create SFrame for modeling.
+- `--mutate`    : Perform mutatuons to objects (rotation, brightness, shapness, contrast)
